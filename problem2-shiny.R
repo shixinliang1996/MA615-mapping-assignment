@@ -6,33 +6,40 @@ library(leaflet.extras)
 #data <- read.csv( "earthquakes_1.0_month.csv", header = TRUE )
 data <- read.csv("Colleges and universities in Boston.csv", header = TRUE)
 
-#categorize earthquake depth
-# data$depth_type <- ifelse(data$depth <= 70, "shallow", 
-#                           ifelse(data$depth <= 300 | data$depth >70,
-#                                  "intermediate", ifelse(data$depth > 300, "deep", "other")))
+#categorize university's student number
+data$NumStudent[data$NumStudent == 0] <- NA
+data$NumStudent[data$NumStudent <= 1000] <- "small"
+data$NumStudent[data$NumStudent < 5000] <- "medium"
+data$NumStudent[data$NumStudent == 9148] <- "large"
+data$NumStudent[data$NumStudent == 5003] <- "large"
+
+data$YearBuilt[data$YearBuilt == 0] <- NA
+data$YearBuilt[data$YearBuilt < 1900] <- "1800s"
+data$YearBuilt[data$YearBuilt >= 1900] <- "1900s"
 
 ui <- fluidPage(
   mainPanel( 
     #this will create a space to display our map
     leafletOutput(outputId = "mymap"), 
+    textOutput("information"),
     #put the checkmarks ontop of the map
-    absolutePanel(top = 60, left = 20, 
-                  checkboxInput("markers", "Depth", FALSE),
-                  checkboxInput("heat", "Heatmap", FALSE)
+    absolutePanel(top = 80, left = 20, 
+                  checkboxInput("markers", "Number of Student", FALSE),
+                  checkboxInput("year", "Year Built", FALSE)
     )
   ))
 
 server <- function(input, output, session) {
-  # #define the color pallate for the magnitidue of the earthquake
-  # pal <- colorNumeric(
-  #   palette = c('gold', 'orange', 'dark orange', 'orange red', 'red', 'dark red'),
-  #   domain = data$mag)
-  # 
-  # #define the color of for the depth of the earquakes
-  # pal2 <- colorFactor(
-  #   palette = c('blue', 'yellow', 'red'),
-  #   domain = data$depth_type
-  # )
+  #define the color pallate for the magnitidue of the earthquake
+  pal1 <- colorFactor(
+    palette = c('blue', 'pink'),
+    domain = data$YearBuilt)
+   
+  #define the color of for the depth of the earquakes
+  pal2 <- colorFactor(
+    palette = c('red', 'orange', 'yellow'),
+    domain = data$NumStudent
+  )
   
   #create the map
   output$mymap <- renderLeaflet({
@@ -50,33 +57,37 @@ server <- function(input, output, session) {
       )
   })
   
+  output$information <- renderText("We can see that most universities locate near Charles River.  
+                                   Schools that built in 1800s are more likely to be near Charles River while schools that built in 1900s are a little bit far from the center of Boston.  
+                                   And schools with large number of student locate in downtown area: near Boston and Fenway.")
+  
   #next we use the observe function to make the checkboxes dynamic. If you leave this part out you will see that the checkboxes, when clicked on the first time, display our filters...But if you then uncheck them they stay on. So we need to tell the server to update the map when the checkboxes are unchecked.
-  # observe({
-  #   proxy <- leafletProxy("mymap", data = data)
-  #   proxy %>% clearMarkers()
-  #   if (input$markers) {
-  #     proxy %>% addCircleMarkers(stroke = FALSE, color = ~pal2(depth_type), fillOpacity = 0.2,      label = ~as.character(paste0("Magnitude: ", sep = " ", mag))) %>%
-  #       addLegend("bottomright", pal = pal2, values = data$depth_type,
-  #                 title = "Depth Type",
-  #                 opacity = 1)}
-  #   else {
-  #     proxy %>% clearMarkers() %>% clearControls()
-  #   }
-  # })
+  observe({
+    proxy <- leafletProxy("mymap", data = data)
+    proxy %>% clearMarkers()
+    if (input$markers) {
+      proxy %>% addCircleMarkers(stroke = TRUE, color = ~pal2(NumStudent), fillOpacity = 0.2,      label = ~as.character(paste0("Number of Student: ", sep = " ", NumStudent))) %>%
+        addLegend("bottomright", pal = pal2, values = data$NumStudent,
+                  title = "Number of Studen",
+                  opacity = 1)}
+    else {
+      proxy %>% clearMarkers() %>% clearControls()
+    }
+  })
   
-  # observe({
-  #   proxy <- leafletProxy("mymap", data = data)
-  #   proxy %>% clearMarkers()
-  #   if (input$heat) {
-  #     proxy %>%  addHeatmap(lng=~longitude, lat=~latitude, intensity = ~mag, blur =  10, max = 0.05, radius = 15) 
-  #   }
-  #   else{
-  #     proxy %>% clearHeatmap()
-  #   }
-  #   
-  #   
-  # })
-  
+  observe({
+    proxy <- leafletProxy("mymap", data = data)
+    proxy %>% clearMarkers()
+    if (input$year) {
+      proxy %>% addCircleMarkers(stroke = TRUE, color = ~pal1(YearBuilt), fillOpacity = 0.2,      label = ~as.character(paste0("Year Built: ", sep = " ", YearBuilt))) %>%
+        addLegend("bottomright", pal = pal1, values = data$YearBuilt,
+                  title = "Year Built",
+                  opacity = 1)}
+    else {
+      proxy %>% clearMarkers() %>% clearControls()
+    }
+  })
+
 }
 
 shinyApp(ui, server)
